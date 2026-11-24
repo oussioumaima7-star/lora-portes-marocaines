@@ -80,6 +80,12 @@ def make_zip():
 def main():
     t0 = time.time()
     try:
+        # Kaggle préinstalle torchao 0.10, que les versions récentes de peft refusent
+        # (« only versions above 0.16.0 are supported »). On ne s'en sert pas : on le retire.
+        subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchao"])
+        r = subprocess.run([sys.executable, "-c", "from peft.import_utils import is_torchao_available as f; print(f())"],
+                           capture_output=True, text=True)
+        log(f"torchao retiré, peft le voit : {r.stdout.strip() or r.stderr.strip()[-200:]}")
         import torch
         log(f"GPU : {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'AUCUN'}")
         if not torch.cuda.is_available():
