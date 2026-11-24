@@ -6,7 +6,7 @@ Pourquoi ce script ?
   data/sources.csv au moment du téléchargement, donc rien n'est perdu.
 
 Usage :
-  python data/download_commons.py --category "Doors in Morocco" --depth 1 --max 150
+  python data/download_commons.py --category "Doors in Morocco" --depth 2 --max 100
 
 Ensuite : regarder les images de data/raw/ et SUPPRIMER celles qui ne conviennent
 pas (plusieurs portes, personnes, filigrane, porte coupée, flou...). Garder 30 à 60.
@@ -30,6 +30,7 @@ ALLOWED = re.compile(r"^(cc0|public domain|pd|cc by(-sa)? [\d.]+|cc by(-sa)?)", 
 ROOT = Path(__file__).resolve().parent
 RAW_DIR = ROOT / "raw"
 SOURCES_CSV = ROOT / "sources.csv"
+REJECTED = RAW_DIR / "_rejected.txt"   # dans raw/ -> sauvegardé sur Drive avec les images
 FIELDS = ["file_name", "title", "author", "license", "license_url", "source_url"]
 
 
@@ -91,7 +92,7 @@ def main():
     ap.add_argument("--category", action="append", default=None,
                     help="Catégorie Commons (répétable). Défaut : 'Doors in Morocco'")
     ap.add_argument("--depth", type=int, default=1, help="Profondeur des sous-catégories")
-    ap.add_argument("--max", type=int, default=150, help="Nombre max d'images candidates")
+    ap.add_argument("--max", type=int, default=150, help="Nombre max de NOUVELLES images à ajouter")
     ap.add_argument("--min-size", type=int, default=600, help="Côté minimal de l'original (px)")
     # Tailles "standard" de Wikimedia : 500, 960, 1280... Les autres sont fortement limitées.
     ap.add_argument("--thumb-width", type=int, default=960)
@@ -113,15 +114,24 @@ def main():
         frontier = nxt
     print(f"{len(seen_cats)} catégories explorées")
 
-    existing = set()
+    # Titres déjà vus = gardés (sources.csv) + écartés au tri (raw/_rejected.txt)
+    # -> une image supprimée au tri n'est JAMAIS re-téléchargée.
+    existing, used_names = set(), {p.name for p in RAW_DIR.glob("commons_*.jpg")}
     if SOURCES_CSV.exists():
         with open(SOURCES_CSV, encoding="utf-8") as f:
-            existing = {row["title"] for row in csv.DictReader(f)}
+            for row in csv.DictReader(f):
+                existing.add(row["title"])
+                used_names.add(row["file_name"])
+    if REJECTED.exists():
+        existing |= set(REJECTED.read_text(encoding="utf-8").splitlines())
+    # Numéro suivant libre : on n'écrase jamais un fichier existant
+    next_idx = 1 + max([int(n[8:12]) for n in used_names if n[8:12].isdigit()], default=-1)
+    print(f"{len(existing)} titres déjà connus, prochain fichier : commons_{next_idx:04d}.jpg")
 
     new_rows, skipped = [], {"licence": 0, "taille": 0, "format": 0, "erreur": 0}
     for cat in sorted(seen_cats):
         for title, info in list_files(cat, args.thumb_width):
-            if len(existing) + len(new_rows) >= args.max:
+            if len(new_rows) >= args.max:
                 break
             if title in existing or any(r["title"] == title for r in new_rows):
                 continue
@@ -137,8 +147,7 @@ def main():
                 skipped["licence"] += 1
                 continue
 
-            idx = len(existing) + len(new_rows)
-            file_name = f"commons_{idx:04d}.jpg"
+            file_name = f"commons_{next_idx:04d}.jpg"
             try:
                 img = fetch(info.get("thumburl", info["url"]))
             except Exception as e:  # une image ratée ne doit pas arrêter toute la collecte
@@ -155,6 +164,7 @@ def main():
                 "source_url": info.get("descriptionurl", ""),
             }
             new_rows.append(row)
+            next_idx += 1
             write_header = not SOURCES_CSV.exists()
             with open(SOURCES_CSV, "a", newline="", encoding="utf-8") as f:
                 w = csv.DictWriter(f, fieldnames=FIELDS)
