@@ -1,0 +1,6 @@
+# Comparaison des rangs : seul le rang change (1000 étapes)
+inherit: base.yaml
+experiment_name: rank4
+lora_rank: 4
+lora_alpha: 4
+max_train_steps: 1000

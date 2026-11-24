@@ -1,0 +1,14 @@
+# torch et torchvision sont déjà installés sur Colab / Kaggle
+diffusers>=0.31
+transformers>=4.44
+peft>=0.13
+accelerate>=0.33
+safetensors
+gradio>=4.40
+matplotlib
+pandas
+pyyaml
+requests
+pillow
+# optionnel : Adam 8 bits si la mémoire est juste
+# bitsandbytes

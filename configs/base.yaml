@@ -1,0 +1,39 @@
+# Configuration de base — LoRA texte-image (Stable Diffusion 1.5)
+# Chaque expérience hérite de ce fichier et ne change que quelques valeurs.
+
+experiment_name: base
+
+# --- Modèle ---
+base_model: stable-diffusion-v1-5/stable-diffusion-v1-5
+# Mot rare qui sert d'"étiquette" au concept appris (évite de polluer un mot existant)
+trigger_word: "mrcdoor"
+
+# --- Données ---
+train_dir: data/processed/train          # images 512x512 + metadata.csv
+heldout_dir: data/processed/heldout      # 5 à 10 images jamais vues à l'entraînement
+resolution: 512
+center_crop: true
+random_flip: true                        # porte symétrique -> le flip horizontal est acceptable
+
+# --- LoRA ---
+lora_rank: 8                             # taille de l'adaptation (4, 8, 16, 32 comparés)
+lora_alpha: 8                            # facteur d'échelle ; alpha = rank -> échelle 1
+lora_dropout: 0.0
+# Couches d'attention du U-Net où l'on insère la LoRA
+target_modules: ["to_q", "to_k", "to_v", "to_out.0"]
+
+# --- Entraînement ---
+max_train_steps: 1000
+train_batch_size: 1
+gradient_accumulation_steps: 4           # batch effectif = 4 sans exploser la mémoire
+learning_rate: 1.0e-4
+lr_scheduler: constant                   # constant | cosine
+lr_warmup_steps: 50
+mixed_precision: fp16                    # fp16 sur T4 (Colab/Kaggle)
+gradient_checkpointing: true             # économise beaucoup de VRAM
+use_8bit_adam: false                     # true si bitsandbytes est installé et la VRAM est juste
+seed: 42
+checkpoint_every: 250                    # sauvegarde intermédiaire -> étudier le surapprentissage
+
+# --- Sortie ---
+output_dir: results/loras

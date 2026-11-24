@@ -1,0 +1,17 @@
+# Données et modèles lourds : jamais dans Git
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+results/loras/
+results/eval/**/*.png
+*.safetensors
+*.ckpt
+*.bin
+
+# Python / notebooks
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+.env
