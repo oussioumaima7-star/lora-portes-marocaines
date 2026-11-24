@@ -38,10 +38,30 @@ def strip_html(text: str) -> str:
 
 
 def api_get(params: dict) -> dict:
-    params = {**params, "format": "json"}
-    r = requests.get(API, params=params, headers=HEADERS, timeout=30)
-    r.raise_for_status()
-    return r.json()
+    return fetch(API, params={**params, "format": "json"}).json()
+
+
+def fetch(url: str, params: dict | None = None, tries: int = 6) -> requests.Response:
+    """GET avec nouvelles tentatives : en cas de 429 (trop de requêtes) ou d'erreur
+    serveur, on attend de plus en plus longtemps (backoff exponentiel) au lieu de planter."""
+    wait = 5
+    for attempt in range(tries):
+        try:
+            r = requests.get(url, params=params, headers=HEADERS, timeout=60)
+        except requests.RequestException as e:
+            print(f"    réseau : {e} -> nouvel essai dans {wait}s")
+        else:
+            if r.status_code == 200:
+                return r
+            if r.status_code not in (429, 500, 502, 503, 504):
+                r.raise_for_status()
+            # Wikimedia indique parfois combien de secondes attendre
+            wait = int(r.headers.get("Retry-After", wait)) if r.headers.get(
+                "Retry-After", "").isdigit() else wait
+            print(f"    HTTP {r.status_code} -> pause de {wait}s (essai {attempt + 1}/{tries})")
+        time.sleep(wait)
+        wait = min(wait * 2, 120)
+    raise RuntimeError(f"Échec après {tries} essais : {url}")
 
 
 def list_subcategories(category: str) -> list[str]:
@@ -73,7 +93,9 @@ def main():
     ap.add_argument("--depth", type=int, default=1, help="Profondeur des sous-catégories")
     ap.add_argument("--max", type=int, default=150, help="Nombre max d'images candidates")
     ap.add_argument("--min-size", type=int, default=600, help="Côté minimal de l'original (px)")
-    ap.add_argument("--thumb-width", type=int, default=1024)
+    # Tailles "standard" de Wikimedia : 500, 960, 1280... Les autres sont fortement limitées.
+    ap.add_argument("--thumb-width", type=int, default=960)
+    ap.add_argument("--delay", type=float, default=1.5, help="Pause entre deux images (s)")
     args = ap.parse_args()
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -96,7 +118,7 @@ def main():
         with open(SOURCES_CSV, encoding="utf-8") as f:
             existing = {row["title"] for row in csv.DictReader(f)}
 
-    new_rows, skipped = [], {"licence": 0, "taille": 0, "format": 0}
+    new_rows, skipped = [], {"licence": 0, "taille": 0, "format": 0, "erreur": 0}
     for cat in sorted(seen_cats):
         for title, info in list_files(cat, args.thumb_width):
             if len(existing) + len(new_rows) >= args.max:
@@ -117,26 +139,30 @@ def main():
 
             idx = len(existing) + len(new_rows)
             file_name = f"commons_{idx:04d}.jpg"
-            img = requests.get(info.get("thumburl", info["url"]), headers=HEADERS, timeout=60)
-            img.raise_for_status()
+            try:
+                img = fetch(info.get("thumburl", info["url"]))
+            except Exception as e:  # une image ratée ne doit pas arrêter toute la collecte
+                print(f"  ! ignorée ({e}) : {title}")
+                skipped["erreur"] += 1
+                continue
             (RAW_DIR / file_name).write_bytes(img.content)
-            new_rows.append({
+            row = {
                 "file_name": file_name,
                 "title": title,
                 "author": strip_html(meta.get("Artist", {}).get("value", "inconnu"))[:200],
                 "license": license_name,
                 "license_url": meta.get("LicenseUrl", {}).get("value", ""),
                 "source_url": info.get("descriptionurl", ""),
-            })
+            }
+            new_rows.append(row)
+            write_header = not SOURCES_CSV.exists()
+            with open(SOURCES_CSV, "a", newline="", encoding="utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=FIELDS)
+                if write_header:
+                    w.writeheader()
+                w.writerow(row)
             print(f"  + {file_name}  [{license_name}]  {title}")
-            time.sleep(0.2)  # rester poli avec l'API
-
-    write_header = not SOURCES_CSV.exists()
-    with open(SOURCES_CSV, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
-        if write_header:
-            w.writeheader()
-        w.writerows(new_rows)
+            time.sleep(args.delay)  # rester poli avec Wikimedia
 
     print(f"\n{len(new_rows)} images ajoutées dans {RAW_DIR}")
     print(f"Ignorées : {skipped}")
