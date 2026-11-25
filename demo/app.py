@@ -16,8 +16,9 @@ NEG = "blurry, low quality, watermark, text, deformed"
 
 
 def find_loras():
-    found = sorted(str(p.parent) for p in (ROOT / "results" / "loras").glob("*/*/*.safetensors"))
-    return {str(Path(p).relative_to(ROOT / "results" / "loras")): p for p in found}
+    # Seulement les LoRA finales (les checkpoints intermédiaires encombrent la liste)
+    found = sorted(str(p.parent) for p in (ROOT / "results" / "loras").glob("*/final/*.safetensors"))
+    return {Path(p).parent.name: p for p in found}
 
 
 def main():
@@ -46,8 +47,9 @@ def main():
             with gr.Column():
                 prompt = gr.Textbox(value="a photo of a mrcdoor with blue zellige, sunny day",
                                     label="Prompt")
-                lora = gr.Dropdown(list(loras), value=list(loras)[-1], label="LoRA")
-                scale = gr.Slider(0, 1.5, value=1.0, step=0.1, label="Intensité de la LoRA")
+                defaut = "rank16" if "rank16" in loras else list(loras)[-1]
+                lora = gr.Dropdown(list(loras), value=defaut, label="LoRA")
+                scale = gr.Slider(0, 1.5, value=0.8, step=0.1, label="Intensité de la LoRA")
                 seed = gr.Number(value=0, precision=0, label="Seed")
                 steps = gr.Slider(10, 50, value=30, step=1, label="Étapes de débruitage")
                 btn = gr.Button("Générer", variant="primary")
