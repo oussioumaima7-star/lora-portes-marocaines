@@ -6,15 +6,21 @@ réentraîner tout le modèle. Tout tourne sur Google Colab ou Kaggle (GPU T4, m
 
 ## Résultats principaux
 
-> À remplir à la fin du projet : tableau `results/eval/metrics.csv` résumé et 1 ou 2 grilles avant/après.
+Une LoRA de rang 16 (12,8 Mo, 26 min sur GPU T4, 2,1 Go de VRAM) fait passer le CLIPScore de 31,5 à 35,2 sur les prompts du domaine, sans aucune copie des images d'entraînement.
 
-| LoRA | CLIPScore ↑ | Proximité domaine ↑ | Quasi-copies ↓ | Taille | Temps d'entraînement |
+| LoRA (1 000 étapes, intensité 1,0) | CLIPScore ↑ | Proximité domaine ↑ | Quasi-copies ↓ | Taille | Temps d'entraînement |
 |------|-------------|--------------------|----------------|--------|-----------------|
-| base (sans LoRA) | | | | – | – |
-| rang 4 | | | | | |
-| rang 8 | | | | | |
-| rang 16 | | | | | |
-| rang 32 | | | | | |
+| base (sans LoRA) | 31,5 | 0,731 | – | – | – |
+| rang 4 | 33,3 | 0,752 | 0 % | 3,2 Mo | 25,7 min |
+| rang 8 | 35,0 | 0,764 | 0 % | 6,4 Mo | 25,7 min |
+| **rang 16** | **35,2** | **0,788** | 0 % | 12,8 Mo | 25,8 min |
+| rang 32 | 35,3 | 0,783 | 0 % | 25,6 Mo | 25,9 min |
+
+- La qualité plafonne vers 1 250 étapes (`results/figures/surapprentissage_etapes.png`).
+- Le concept se combine avec une couleur ou l'aquarelle, mais disparaît dans un bâtiment de verre moderne.
+- Configuration recommandée : rang 16, 1 000 à 1 250 étapes, intensité 0,8.
+
+![Comparaison](results/planche_qualitative.jpg)
 
 ## Installation
 
@@ -24,8 +30,7 @@ cd lora-portes-marocaines
 pip install -r requirements.txt      # torch est déjà présent sur Colab/Kaggle
 ```
 
-Sur Colab, ouvrir les notebooks dans l'ordre : ils montent Google Drive pour que les LoRA
-survivent à la fin de session.
+L'entraînement et l'évaluation complets se lancent sur Kaggle avec `notebooks/kaggle_entrainement.ipynb` (tout le pipeline est dans `scripts/run_kaggle.py`). Les notebooks 01 à 05 servent sur Colab.
 
 ## Commandes
 

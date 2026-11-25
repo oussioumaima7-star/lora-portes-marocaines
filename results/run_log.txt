@@ -1,0 +1,20 @@
+[14:22:00] torchao retiré, peft le voit : False
+[14:22:02] GPU : Tesla T4
+[14:22:23] sources.csv : /kaggle/input/notebooks/oumaimaoussi/lora-portes-marocaines-entrainement/projet/data/sources.csv
+[14:22:25] captions.csv : /kaggle/input/notebooks/oumaimaoussi/lora-portes-marocaines-entrainement/projet/data/captions.csv
+[14:22:25] 29 images copiées dans data/raw
+[14:22:36] LoRA reprises depuis /kaggle/input/notebooks/oumaimaoussi/lora-portes-marocaines-entrainement/projet/results/loras : ['rank16', 'rank32', 'rank4', 'rank8', 'rank8_steps2000']
+[14:22:36] $ data/prepare.py --heldout 8 --mode crop
+[14:22:40] 29 légendes OK
+[14:22:40] rank8 déjà fait
+[14:22:40] rank4 déjà fait
+[14:22:40] rank16 déjà fait
+[14:22:40] rank32 déjà fait
+[14:22:40] steps_long déjà fait
+[14:22:40] ===== Évaluation des rangs
+[14:22:40] $ -m src.evaluate --loras results/loras/rank4/final results/loras/rank8/final results/loras/rank16/final results/loras/rank32/final
+[15:16:29] ===== Évaluation au fil des étapes
+[15:16:29] $ -m src.evaluate --quick --out results/eval_etapes --loras results/loras/rank8_steps2000/checkpoint-1000 results/loras/rank8_steps2000/checkpoint-1250 results/loras/rank8_steps2000/checkpoint-1500 results/loras/rank8_steps2000/checkpoint-1750 results/loras/rank8_steps2000/checkpoint-250 results/loras/rank8_steps2000/checkpoint-500 results/loras/rank8_steps2000/checkpoint-750 results/loras/rank8_steps2000/final
+[15:35:09] $ -m src.plots
+[15:35:12] $ -m src.summary
+[15:35:13] Durée totale : 74 min
