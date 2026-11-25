@@ -90,3 +90,7 @@ Les définitions des métriques sont expliquées dans `src/evaluate.py` et `docs
 | Aymane Barkat | Évaluation, figures, démo | `src/evaluate.py`, `src/plots.py`, `notebooks/04_evaluation`, `demo/`, `docs/model_card.md` |
 
 Le rapport est rédigé à trois : chacun écrit la partie qui correspond à son rôle, et l'introduction et la conclusion sont faites ensemble.
+
+## Vidéo de la démo
+
+[demo/demo.mp4](demo/demo.mp4) : même prompt et même seed, avec la LoRA à une intensité de 0, puis 0,8, puis 1,5.
