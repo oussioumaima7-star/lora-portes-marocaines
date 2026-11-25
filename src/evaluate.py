@@ -47,13 +47,18 @@ class Clip:
         out = []
         for i in range(0, len(imgs), 16):
             x = self.proc(images=imgs[i:i + 16], return_tensors="pt").to("cuda")
-            out.append(F.normalize(self.model.get_image_features(**x), dim=-1))
+            # Calcul explicite (vision -> projection) : marche avec toutes les versions de
+            # transformers (la v5 renvoie un objet au lieu d'un tenseur via get_image_features)
+            pooled = self.model.vision_model(pixel_values=x["pixel_values"]).pooler_output
+            out.append(F.normalize(self.model.visual_projection(pooled), dim=-1))
         return torch.cat(out)
 
     @torch.no_grad()
     def texts(self, texts):
         x = self.proc(text=texts, return_tensors="pt", padding=True, truncation=True).to("cuda")
-        return F.normalize(self.model.get_text_features(**x), dim=-1)
+        pooled = self.model.text_model(input_ids=x["input_ids"],
+                                       attention_mask=x.get("attention_mask")).pooler_output
+        return F.normalize(self.model.text_projection(pooled), dim=-1)
 
 
 def load_dir(d: Path):

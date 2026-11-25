@@ -41,6 +41,8 @@ def find_data():
     """Trouve images + CSV n'importe où dans /kaggle/input (zip décompressé ou non)."""
     extra = WORK / "ds"
     for z in INPUT.rglob("*.zip"):
+        if z.name == "resultats.zip":
+            continue
         log(f"Décompression de {z}")
         zipfile.ZipFile(z).extractall(extra)
     roots = [INPUT, extra]
@@ -50,7 +52,8 @@ def find_data():
     n = 0
     for r in roots:
         for f in r.rglob("*"):
-            if f.suffix.lower() in {".jpg", ".jpeg", ".png"} and "processed" not in f.parts:
+            # on ignore les images produites par un run précédent (figures, grilles...)
+            if f.suffix.lower() in {".jpg", ".jpeg", ".png"} and not EXCL & set(f.parts):
                 shutil.copy(f, raw / f.name)
                 n += 1
     for name in ["sources.csv", "captions.csv"]:
@@ -62,6 +65,21 @@ def find_data():
     log(f"{n} images copiées dans data/raw")
     if n < 20:
         raise RuntimeError(f"Seulement {n} images : vérifier le dataset en Input")
+
+
+EXCL = {"processed", "results", "figures", "eval", "eval_etapes"}
+
+
+def restore_loras():
+    """Reprend les LoRA d'un run précédent (sortie d'une version ajoutée en Input) :
+    évite de refaire 2 h 40 d'entraînement si seule l'évaluation a échoué."""
+    dst = ROOT / "results" / "loras"
+    for d in INPUT.rglob("loras"):
+        if d.is_dir() and any(d.glob("*/final/*.safetensors")):
+            shutil.copytree(d, dst, dirs_exist_ok=True)
+            log(f"LoRA reprises depuis {d} : {sorted(p.name for p in dst.iterdir())}")
+            return
+    log("Aucune LoRA précédente trouvée : entraînement complet")
 
 
 def make_zip():
@@ -92,6 +110,7 @@ def main():
             raise RuntimeError("Pas de GPU : Settings > Accelerator > GPU T4 x2")
 
         find_data()
+        restore_loras()
         run(["data/prepare.py", "--heldout", "8", "--mode", "crop"])
         import pandas as pd
         cap = pd.read_csv("data/captions.csv")
