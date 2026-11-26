@@ -94,3 +94,13 @@ Le rapport est rédigé à trois : chacun écrit la partie qui correspond à son
 ## Vidéo de la démo
 
 [demo/demo.mp4](demo/demo.mp4) : même prompt et même seed, avec la LoRA à une intensité de 0, puis 0,8, puis 1,5.
+
+## Contributions
+
+| Membre | Partie |
+| --- | --- |
+| Oumaima Oussi | Données, licences, éthique |
+| Younes Lallaoui | LoRA, entraînement |
+| Aymane Barkat | Évaluation, démo |
+
+Le rapport et la soutenance ont été préparés ensemble.
